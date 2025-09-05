@@ -14,6 +14,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TAG_NAME: "v${{ inputs.version }}"
 
 jobs:
   build:
@@ -26,7 +27,7 @@ jobs:
         with:
           repository: openai/openai-java
           path: src
-          ref: "v${{ inputs.version }}"
+          ref: $TAG_NAME
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -40,6 +41,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+            ~/build
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
@@ -55,17 +57,18 @@ jobs:
       # Debug
       - name: List all files
         run: |
-          ls -aR src/build
+          ls -aR src/
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: openai-java-jar
-          path: build/libs/*.jar
+          path: */build/**/*.jar
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/*.jar
+          tag_name: $TAG_NAME
+          files: */build/**/*.jar
           draft: false
           prerelease: false

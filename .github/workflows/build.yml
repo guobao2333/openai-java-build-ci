@@ -9,7 +9,7 @@ on:
         default: '3.4.1'
       java_version:
         description: 'Use Java Version'
-        required: true
+        required: false
         default: '8' # Compile to Java 8 (class 52)
 
 env:
@@ -50,7 +50,7 @@ jobs:
           SKIP_MOCK_TESTS: true
         run: |
           chmod +x gradlew
-          ./gradlew build -Dorg.gradle.java.compile.release=${{ inputs.java_version }}
+          ./gradlew build -Dorg.gradle.java.compile.release=${{ inputs.java_version || '8' }}
 
       # Debug
       - name: List all files

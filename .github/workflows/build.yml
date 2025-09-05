@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Semantic version'
+        description: 'Lib SemVer'
         required: true
         default: '3.4.1'
+      java_version:
+        description: 'Use Java Version'
+        required: true
+        default: '8' # Compile to Java 8 (class 52)
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -14,6 +18,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,37 +50,22 @@ jobs:
           SKIP_MOCK_TESTS: true
         run: |
           chmod +x gradlew
-          ./gradlew build
+          ./gradlew build -Dorg.gradle.java.compile.release=${{ inputs.java_version }}
 
-      - name: Create Release
-        id: create-release
-        uses: actions/create-release@v1
+      # Debug
+      - name: List all files
+        run: |
+          ls -aR src/build
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ inputs.version }}
-          release_name: ${{ inputs.version }}
+          name: openai-java-jar
+          path: build/libs/*.jar
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/libs/*.jar
           draft: false
           prerelease: false
-
-      - name: Upload Release Assets
-        env:
-          UPLOAD_URL: ${{ steps.create-release.outputs.upload_url }}
-        run: |
-          CLEAN_UPLOAD_URL=$(echo "$UPLOAD_URL" | sed 's/{?.*}//')
-          find src -name "*.jar" -path "build/*" | while read -r JAR_FILE; do
-            JAR_NAME=$(basename "$JAR_FILE")
-            echo "Uploading... $JAR_NAME"
-
-            curl -f -sSL \
-              -X POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              -F "asset=@$JAR_FILE;type=application/java-archive" \
-              "$CLEAN_UPLOAD_URL?name=$JAR_NAME"
-
-            if [ $? -eq 0 ]; then
-              echo "$JAR_NAME Upload done."
-            else
-              echo "ERR: $JAR_NAME Upload failed."
-              exit 1
-            fi
-          done

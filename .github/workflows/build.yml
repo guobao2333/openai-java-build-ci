@@ -27,7 +27,7 @@ jobs:
         with:
           repository: openai/openai-java
           path: src
-          ref: $TAG_NAME
+          ref: ${{ env.TAG_NAME }}
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -68,7 +68,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: $TAG_NAME
+          tag_name: ${{ env.TAG_NAME }}
           files: src/**/build/**/*.jar
           draft: false
           prerelease: false

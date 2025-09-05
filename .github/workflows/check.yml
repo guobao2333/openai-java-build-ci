@@ -1,0 +1,46 @@
+name: Check update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 14 */7 * *'  # Check every 7 days (UTC 14:00 | UTC+8 22:00)
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get remote version
+        id: remote
+        run: |
+          REMOTE_TAG=$(curl -s https://github.com/openai/openai-java/releases/latest | jq -r .tag_name)
+          echo "☁️上游版本： $REMOTE_VERSION"
+          if [[ "$REMOTE_VERSION" =~ v([0-9.]+) ]]; then
+            echo "remote_version=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+          else
+            echo "remote_version=none" >> $GITHUB_OUTPUT
+          fi
+          echo "raw_tag=$REMOTE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Get local version
+        id: local
+        run: |
+          LOCAL_TAG=$(curl -s "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -r .tag_name || true)
+          echo "📦当前版本： $LOCAL_TAG"
+          if [[ "$LOCAL_TAG" =~ v([0-9.]+) ]]; then
+            echo "local_version=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+          else
+            echo "local_version=none" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Compare versions
+        run: |
+          if [ "${{ steps.local.outputs.local_version }}" == "${{ steps.remote.outputs.remote_version }}" ]; then
+            echo "✅ 已是最新版本: ${{ steps.remote.outputs.remote_version }}"
+          else
+            echo "🔄 发现新版本: ${{ steps.remote.outputs.remote_version }} (当前: ${{ steps.local.outputs.local_version }})"
+            gh workflow run build.yml -f version=${{ steps.remote.outputs.remote_version }}
+          fi

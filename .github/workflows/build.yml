@@ -1,0 +1,67 @@
+name: Automation Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semantic version'
+        required: true
+        default: '3.4.1'
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: openai/openai-java
+          path: src
+          ref: ${{ inputs.version }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 11
+          cache: maven
+
+      - name: Build with Maven
+        working-directory: src
+        run: mvn -B clean package -Dsurefire.timeout=60
+
+      - name: Create Release
+        id: create-release
+        uses: actions/create-release@v1
+        with:
+          tag_name: v${{ inputs.version }}
+          release_name: ${{ inputs.version }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Assets
+        env:
+          UPLOAD_URL: ${{ steps.create-release.outputs.upload_url }}
+        run: |
+          CLEAN_UPLOAD_URL=$(echo "$UPLOAD_URL" | sed 's/{?.*}//')
+          find src -name "*.jar" -path "*/target/*" | while read -r JAR_FILE; do
+            JAR_NAME=$(basename "$JAR_FILE")
+            echo "Uploading... $JAR_NAME"
+
+            curl -f -sSL \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -F "asset=@$JAR_FILE;type=application/java-archive" \
+              "$CLEAN_UPLOAD_URL?name=$JAR_NAME"
+
+            if [ $? -eq 0 ]; then
+              echo "$JAR_NAME Upload done."
+            else
+              echo "ERR: $JAR_NAME Upload failed."
+              exit 1
+            fi
+          done

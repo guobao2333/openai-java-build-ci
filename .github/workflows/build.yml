@@ -26,12 +26,23 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 11
-          cache: maven
+          java-version: 17
 
-      - name: Build with Maven
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+      - name: Build with Gradle
         working-directory: src
-        run: mvn -B clean package -Dsurefire.timeout=60
+        run: |
+          chmod +x gradlew
+          ./gradlew build
 
       - name: Create Release
         id: create-release
@@ -47,7 +58,7 @@ jobs:
           UPLOAD_URL: ${{ steps.create-release.outputs.upload_url }}
         run: |
           CLEAN_UPLOAD_URL=$(echo "$UPLOAD_URL" | sed 's/{?.*}//')
-          find src -name "*.jar" -path "*/target/*" | while read -r JAR_FILE; do
+          find src -name "*.jar" -path "build/**" | while read -r JAR_FILE; do
             JAR_NAME=$(basename "$JAR_FILE")
             echo "Uploading... $JAR_NAME"
 

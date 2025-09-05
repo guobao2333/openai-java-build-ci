@@ -16,7 +16,7 @@ jobs:
       - name: Get remote version
         id: remote
         run: |
-          REMOTE_TAG=$(curl -s https://github.com/openai/openai-java/releases/latest | jq -r .tag_name)
+          REMOTE_TAG=$(curl -s https://api.github.com/repos/openai/openai-java/releases/latest | jq -r .tag_name)
           echo "☁️上游版本： $REMOTE_TAG"
           if [[ "$REMOTE_TAG" =~ v([0-9.]+) ]]; then
             echo "remote_version=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT

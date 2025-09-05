@@ -20,7 +20,7 @@ jobs:
         with:
           repository: openai/openai-java
           path: src
-          ref: ${{ inputs.version }}
+          ref: "v${{ inputs.version }}"
 
       - name: Set up JDK
         uses: actions/setup-java@v4

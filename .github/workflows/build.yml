@@ -40,6 +40,8 @@ jobs:
 
       - name: Build with Gradle
         working-directory: src
+        env:
+          SKIP_MOCK_TESTS: true
         run: |
           chmod +x gradlew
           ./gradlew build
@@ -58,7 +60,7 @@ jobs:
           UPLOAD_URL: ${{ steps.create-release.outputs.upload_url }}
         run: |
           CLEAN_UPLOAD_URL=$(echo "$UPLOAD_URL" | sed 's/{?.*}//')
-          find src -name "*.jar" -path "build/**" | while read -r JAR_FILE; do
+          find src -name "*.jar" -path "build/*" | while read -r JAR_FILE; do
             JAR_NAME=$(basename "$JAR_FILE")
             echo "Uploading... $JAR_NAME"
 
